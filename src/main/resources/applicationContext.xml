@@ -5,9 +5,61 @@
        xmlns:aop="http://www.springframework.org/schema/aop"
        xmlns:tx="http://www.springframework.org/schema/tx"
        xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
-                           http://www.springframework.org/schema/context http://www.springframework.org/schema/spring-context.xsd
-                           http://www.springframework.org/schema/aop http://www.springframework.org/schema/spring-aop.xsd
-                           http://www.springframework.org/schema/tx http://www.springframework.org/schema/spring-tx.xsd">
-    <bean name="userAction" class="cn.kang.web.action.UserAction"></bean>
+                           http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+                           http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd
+                           http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd">
+    <context:component-scan base-package="cn.kang.web.action"/>
+    <!--<context:annotation-config></context:annotation-config>-->
+
+    <context:property-placeholder location="classpath:db.properties"/>
+    <bean name="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+        <property name="driverClass" value="${jdbc.driverClass}"/>
+        <property name="jdbcUrl" value="${jdbc.jdbcUrl}"/>
+        <property name="user" value="${jdbc.user}"/>
+        <property name="password" value="${jdbc.password}"/>
+    </bean>
+
+    <bean name="sessionFactory" class="org.springframework.orm.hibernate5.LocalSessionFactoryBean">
+        <!--<property name="configLocation" value="classpath:hibernate.cfg.xml"/>-->
+        <property name="dataSource" ref="dataSource"></property>
+        <property name="hibernateProperties">
+            <props>
+                <!--<prop key="hibernate.connection.driver_class">com.mysql.jdbc.Driver</prop>-->
+                <!--<prop key="hibernate.connection.url">jdbc:mysql:///testssh</prop>-->
+                <!--<prop key="hibernate.connection.usernameser">root</prop>-->
+                <!--<prop key="hibernate.connection.password">root</prop>-->
+                <prop key="hibernate.dialect">org.hibernate.dialect.MySQLDialect</prop>
+                <prop key="show_sql">true</prop>
+                <prop key="format_sql">true</prop>
+                <prop key="hibernate.hbm2ddl.auto">update</prop>
+            </props>
+        </property>
+        <property name="mappingDirectoryLocations" value="classpath:cn/kang/entity"/>
+    </bean>
+    
+    <bean name="transactionManager" class="org.springframework.orm.hibernate5.HibernateTransactionManager">
+        <!--<property name="dataSource" ref="dataSource"/>-->
+        <property name="sessionFactory" ref="sessionFactory"></property>
+    </bean>
+
+    <tx:advice id="myAdvice" transaction-manager="transactionManager">
+        <tx:attributes>
+            <tx:method name="update" propagation="REQUIRED" read-only="false" isolation="REPEATABLE_READ"/>
+            <tx:method name="save" propagation="REQUIRED" read-only="false" isolation="REPEATABLE_READ"/>
+        </tx:attributes>
+    </tx:advice>
+    <aop:config>
+        <aop:pointcut id="pc" expression="execution(* cn.kang.service.impl.UserServiceImpl.*(..))"/>
+        <aop:advisor advice-ref="myAdvice" pointcut-ref="pc"/>
+    </aop:config>
+
+
+
+    <bean name="userDao" class="cn.kang.dao.impl.UserDaoImpl">
+        <property name="sessionFactory" ref="sessionFactory"/>
+    </bean>
+    <bean name="userService" class="cn.kang.service.impl.UserServiceImpl">
+        <property name="userDao" ref="userDao"/>
+    </bean>
 
 </beans>
